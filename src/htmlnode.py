@@ -1,0 +1,61 @@
+
+
+class HTMLNode:
+    def __init__(self, tag =None, value =None, children=None, props=None):
+        self.tag = tag
+        self.value = value
+        self.children = children
+        self.props = props
+
+    def to_html(self):
+        raise NotImplementedError
+
+    def props_to_html(self):
+        result = ""
+        for key, value in self.props:
+            result += result + f'{key}="{value}" '
+        return result
+
+    def __eq__(self, other):
+        return self.tag == other.tag and self.value == other.value and self.children == other.children and self.props == other.props
+
+    def __repr__(self):
+        return f"HTMLNode({self.tag}, {self.value}, {self.children}, {self.props})"
+
+
+class LeafNode(HTMLNode):
+    def __init__(self, tag, value, props=None):
+        super().__init__(tag=tag, value=value, props=props)
+
+    def to_html(self):
+        if not self.value:
+            raise ValueError("Leaf Node must have a value")
+        if not self.tag:
+            return self.value
+        if self.props is None:
+            return f"<{self.tag}>{self.value}</{self.tag}>"
+        else:
+            for key in self.props:
+                return f'<{self.tag} {key}="{self.props[key]}">{self.value}</{self.tag}>'
+        return Exception(f"unable to process .to_html() for LeafNode\n Tag: {self.tag},Value {self.value}, Props: {self.props}")
+
+    def __repr__(self):
+        return f"LeafNode({self.tag}, {self.value}, {self.props})"
+
+
+class ParentNode(HTMLNode):
+    def __init__(self, tag, children, props=None):
+        super().__init__(tag=tag, children=children, props=props)
+
+
+    def to_html(self):
+        if not self.tag:
+            raise ValueError("Parent Node must have a tag")
+        if not self.children:
+            raise ValueError("Parent Node must have at least 1 child!")
+        child_list = ""
+        for child in self.children:
+            child_list += child.to_html()
+        return f"<{self.tag}>{child_list}</{self.tag}>"
+
+
