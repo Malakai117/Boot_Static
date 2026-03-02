@@ -1,3 +1,5 @@
+import re
+
 from htmlnode import HTMLNode, LeafNode, ParentNode
 from textnode import TextNode, TextType
 
@@ -44,3 +46,61 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
                 results.append(node)
 
     return results
+
+def split_nodes_image(old_nodes):
+    results = []
+    for node in old_nodes:
+        match node.text_type:
+            case TextType.TEXT:
+                text = node.text
+                delimits = extract_markdown_images(text)
+                for delimit in delimits:
+                    delimiter = f"![{delimit[0]}]({delimit[1]})"
+                    split = text.split(delimiter, maxsplit=1)
+                    if len(split[0]) > 0:
+                        new_text_node = TextNode(text=split[0], text_type=TextType.TEXT)
+                        results.append(new_text_node)
+                    new_img_node = TextNode(text=delimit[0], text_type=TextType.IMAGE, url=delimit[1])
+                    results.append(new_img_node)
+                    text = split[1]
+                if len(text) > 0:
+                    new_text_node = TextNode(text=text, text_type=TextType.TEXT)
+                    results.append(new_text_node)
+            case _:
+                continue
+    return results
+
+def split_nodes_link(old_nodes):
+    results = []
+    for node in old_nodes:
+        match node.text_type:
+            case TextType.TEXT:
+                text = node.text
+                delimits = extract_markdown_links(text)
+                for delimit in delimits:
+                    delimiter = f"[{delimit[0]}]({delimit[1]})"
+                    split = text.split(delimiter, maxsplit=1)
+                    if len(split[0]) > 0:
+                        new_text_node = TextNode(text=split[0], text_type=TextType.TEXT)
+                        results.append(new_text_node)
+                    new_link_node = TextNode(text=delimit[0], text_type=TextType.LINK, url=delimit[1])
+                    results.append(new_link_node)
+                    text = split[1]
+                if len(text) > 0:
+                    new_text_node = TextNode(text=text, text_type=TextType.TEXT)
+                    results.append(new_text_node)
+            case _:
+                continue
+    return results
+
+def extract_markdown_images(text):
+    if not text:
+        return []
+    matches = re.findall(r"!\[([^\[\]]*)\]\(([^\(\)]*)\)", text)
+    return matches
+
+def extract_markdown_links(text):
+    if not text:
+        return []
+    matches = re.findall(r"(?<!!)\[([^\[\]]*)\]\(([^\(\)]*)\)", text)
+    return matches
