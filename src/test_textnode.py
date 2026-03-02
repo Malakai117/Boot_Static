@@ -87,7 +87,6 @@ class TestExtractMarkdowns(unittest.TestCase):
         )
         self.assertListEqual([("image", "https://i.imgur.com/zjjcJKZ.png")], matches)
 
-
 class TestSplitNodesDelimiter(unittest.TestCase):
     def test_split_images(self):
         node1 = TextNode(
@@ -158,6 +157,23 @@ class TestSplitNodesDelimiter(unittest.TestCase):
         self.assertListEqual([node1_comp1, node1_comp2], new_nodes4)
         self.assertListEqual(comp1, new_nodes5)
 
+class Test_Text_to_None(unittest.TestCase):
+    def setUp(self):
+        text = "This is **text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)"
+        res = text_to_textnode(text)
+        comp = [
+    TextNode("This is ", TextType.TEXT),
+    TextNode("text", TextType.BOLD),
+    TextNode(" with an ", TextType.TEXT),
+    TextNode("italic", TextType.ITALIC),
+    TextNode(" word and a ", TextType.TEXT),
+    TextNode("code block", TextType.CODE),
+    TextNode(" and an ", TextType.TEXT),
+    TextNode("obi wan image", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg"),
+    TextNode(" and a ", TextType.TEXT),
+    TextNode("link", TextType.LINK, "https://boot.dev"),
+]
+        self.assertListEqual(res, comp)
 
 
 

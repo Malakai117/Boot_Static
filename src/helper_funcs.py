@@ -104,3 +104,21 @@ def extract_markdown_links(text):
         return []
     matches = re.findall(r"(?<!!)\[([^\[\]]*)\]\(([^\(\)]*)\)", text)
     return matches
+
+def text_to_textnode(text):
+    if not text:
+        raise ValueError("Need text to convert to textnode")
+    nodes = [TextNode(text, TextType.TEXT)]
+
+    for text_type in TextType:
+        match text_type:
+            case TextType.BOLD | TextType.ITALIC | TextType.CODE:
+                nodes = split_nodes_delimiter(nodes, text_type.value, text_type)
+            case TextType.IMAGE:
+                nodes = split_nodes_image(nodes)
+            case TextType.LINK:
+                nodes = split_nodes_link(nodes)
+            case TextType.TEXT:
+                continue
+
+    return nodes
