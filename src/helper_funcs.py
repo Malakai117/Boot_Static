@@ -122,3 +122,16 @@ def text_to_textnode(text):
                 continue
 
     return nodes
+
+def markdown_to_blocks(markdown_text):
+    if not markdown_text:
+        raise ValueError("Need text to convert to blocks")
+    blocks = markdown_text.split("\n\n")
+    results = []
+    for block in blocks:
+        lines = block.splitlines()
+        stripped_lines = [line.strip() for line in lines]
+        block = "\n".join(line for line in stripped_lines if line)
+        if block:
+            results.append(block)
+    return results
