@@ -1,9 +1,11 @@
 from helper_funcs import *
+import os
 
+STATIC_PATH = "./static"
+PUBLIC_PATH = "./public"
 
-def main(markdown_file):
-
-
+def main():
+    copy_static_to_public(STATIC_PATH, PUBLIC_PATH)
 
 
 

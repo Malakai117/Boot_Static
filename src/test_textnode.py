@@ -296,7 +296,7 @@ class TestBlockToBlockType(unittest.TestCase):
     def test_empty_string_is_paragraph(self):
         self.assertEqual(block_to_block_type(""), BlockType.PARAGRAPH)
 
-class Test_markdown_to_html(unittest.TestCase):
+class TestMarkdownToHtml(unittest.TestCase):
     def test_paragraphs(self):
         md = """
     This is **bolded** paragraph

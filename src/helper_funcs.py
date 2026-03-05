@@ -1,4 +1,5 @@
 import re
+import os
 
 from htmlnode import HTMLNode, LeafNode, ParentNode
 from textnode import TextNode, TextType, BlockType
@@ -258,3 +259,52 @@ def markdown_to_html_node(markdown_file: str) -> HTMLNode:
 
     return root_node
 
+def delete_directory(path):
+    """Recursively deletes all contents of a directory."""
+    if not os.path.exists(path):
+        return
+
+    for item in os.listdir(path):
+        item_path = os.path.join(path, item)
+        if os.path.isdir(item_path):
+            delete_directory(item_path)
+            os.rmdir(item_path)
+        else:
+            os.remove(item_path)
+
+def copy_directory(src, dst):
+    """
+    Recursively copies all contents from src directory to dst directory.
+
+    Args:
+        src: Source directory path
+        dst: Destination directory path
+    """
+    os.makedirs(dst, exist_ok=True)
+
+    for item in os.listdir(src):
+        src_path = os.path.join(src, item)
+        dst_path = os.path.join(dst, item)
+
+        if os.path.isdir(src_path):
+            copy_directory(src_path, dst_path)
+        else:
+            with open(src_path, "rb") as src_file:
+                with open(dst_path, "wb") as dst_file:
+                    dst_file.write(src_file.read())
+            print(f"Copied: {src_path} -> {dst_path}")
+
+def copy_static_to_public(src="./static", dst="./public"):
+    print(f"Deleting contents of '{dst}'...")
+    delete_directory(dst)
+    print(f"Copying '{src}' -> '{dst}'...")
+    copy_directory(src, dst)
+    print("Done.")
+
+def extract_title(markdown):
+    lines = markdown.splitlines()
+    if lines[0].startswith("#"):
+        heading = lines[0][1:].strip()
+    else:
+        raise Exception("Heading not found.")
+    return heading
