@@ -1,10 +1,9 @@
-from textnode import  TextNode, TextType
+from helper_funcs import *
 
 
+def main(markdown_file):
 
 
-def main():
-    print("Hello World")
 
 
 

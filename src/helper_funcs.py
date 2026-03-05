@@ -1,7 +1,7 @@
 import re
 
 from htmlnode import HTMLNode, LeafNode, ParentNode
-from textnode import TextNode, TextType
+from textnode import TextNode, TextType, BlockType
 
 
 
@@ -44,7 +44,7 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
 
             case _:
                 results.append(node)
-
+        #print(node)
     return results
 
 def split_nodes_image(old_nodes):
@@ -67,7 +67,7 @@ def split_nodes_image(old_nodes):
                     new_text_node = TextNode(text=text, text_type=TextType.TEXT)
                     results.append(new_text_node)
             case _:
-                continue
+                results.append(node)
     return results
 
 def split_nodes_link(old_nodes):
@@ -90,7 +90,7 @@ def split_nodes_link(old_nodes):
                     new_text_node = TextNode(text=text, text_type=TextType.TEXT)
                     results.append(new_text_node)
             case _:
-                continue
+                results.append(node)
     return results
 
 def extract_markdown_images(text):
@@ -105,7 +105,7 @@ def extract_markdown_links(text):
     matches = re.findall(r"(?<!!)\[([^\[\]]*)\]\(([^\(\)]*)\)", text)
     return matches
 
-def text_to_textnode(text):
+def text_to_textnode(text) -> list[TextNode]:
     if not text:
         raise ValueError("Need text to convert to textnode")
     nodes = [TextNode(text, TextType.TEXT)]
@@ -114,16 +114,20 @@ def text_to_textnode(text):
         match text_type:
             case TextType.BOLD | TextType.ITALIC | TextType.CODE:
                 nodes = split_nodes_delimiter(nodes, text_type.value, text_type)
+                #print(f"After {text_type}: {nodes}")
             case TextType.IMAGE:
                 nodes = split_nodes_image(nodes)
+                #print(f"After {text_type}: {nodes}")
             case TextType.LINK:
                 nodes = split_nodes_link(nodes)
+                #print(f"After {text_type}: {nodes}")
             case TextType.TEXT:
+                #print(f"After {text_type}: {nodes}")
                 continue
 
     return nodes
 
-def markdown_to_blocks(markdown_text):
+def markdown_to_blocks(markdown_text) -> list[str]:
     if not markdown_text:
         raise ValueError("Need text to convert to blocks")
     blocks = markdown_text.split("\n\n")
@@ -135,3 +139,122 @@ def markdown_to_blocks(markdown_text):
         if block:
             results.append(block)
     return results
+
+def block_to_block_type(block: str) -> BlockType:
+    # Heading: 1-6 # chars followed by a space
+    if re.match(r"^#{1,6} ", block):
+        return BlockType.HEADING
+
+    # Code block: starts with ``` + newline, ends with ```
+    if block.startswith("```\n") and block.endswith("```"):
+        return BlockType.CODE
+
+    lines = block.splitlines()
+
+    # Quote: every line starts with >
+    if lines and all(line.startswith(">") for line in lines):
+        return BlockType.QUOTE
+
+    # Unordered list: every line starts with "- "
+    if lines and all(line.startswith("- ") for line in lines):
+        return BlockType.UN_LIST
+
+    # Ordered list: lines start with 1. 2. 3. ... incrementing from 1
+    is_ordered = True
+    for i, line in enumerate(lines, start=1):
+        if not line.startswith(f"{i}. "):
+            is_ordered = False
+            break
+    if is_ordered and lines:
+        return BlockType.OR_LIST
+
+    return BlockType.PARAGRAPH
+
+def markdown_to_html_node(markdown_file: str) -> HTMLNode:
+    if not markdown_file:
+        raise ValueError("Need markdown_file to convert to html nodes")
+    markdown_blocks = markdown_to_blocks(markdown_file)
+    root_node = ParentNode(tag="div", children=[])
+
+    for block in markdown_blocks:
+        block_type = block_to_block_type(block)
+        match block_type:
+            case BlockType.HEADING:
+                split = block.split(" ", 1)
+                head = len(split[0])
+                text_nodes = text_to_textnode(split[1])
+                html_leaf_nodes = []
+                for text_node in text_nodes:
+                    html_leaf_nodes.append(text_node.text_node_to_html_node())
+                tag = f"h{head}"
+                block_html_parent = ParentNode(tag=tag, children=html_leaf_nodes)
+                root_node.children.append(block_html_parent)
+
+            case BlockType.CODE:
+                striped = block[4:-3]
+                node = TextNode(striped, TextType.CODE)
+                code_html = node.text_node_to_html_node()
+                code_parent_node = ParentNode(tag="pre", children=[code_html])
+                root_node.children.append(code_parent_node)
+
+            case BlockType.QUOTE:
+                lines = block.splitlines()
+                clean_lines = []
+                for line in lines:
+                    clean_line = line[1:].strip()
+                    clean_lines.append(clean_line)
+                cleaned_block = " ".join(clean_lines)
+                text_nodes = text_to_textnode(cleaned_block)
+                html_leaf_nodes = []
+                for text_node in text_nodes:
+                    html_leaf_nodes.append(text_node.text_node_to_html_node())
+
+                quote_parent_node = ParentNode(tag="blockquote", children=html_leaf_nodes)
+                root_node.children.append(quote_parent_node)
+
+            case BlockType.OR_LIST:
+                lines = block.splitlines()
+                i = 1
+                or_list_parent_node = ParentNode(tag="ol", children=[])
+
+                for line in lines:
+                    length = len(f"{i}. ")
+                    i += 1
+                    clean_line = line[length:].strip()
+                    line_item_text_nodes = text_to_textnode(clean_line)
+                    list_item_html_nodes = []
+                    for text_node in line_item_text_nodes:
+                        list_item_html_nodes.append(text_node.text_node_to_html_node())
+
+                    list_item_parent_node = ParentNode(tag="li", children=list_item_html_nodes)
+                    or_list_parent_node.children.append(list_item_parent_node)
+                root_node.children.append(or_list_parent_node)
+
+            case BlockType.UN_LIST:
+                lines = block.splitlines()
+                un_list_parent_nodes = ParentNode(tag="ul", children=[])
+
+                for line in lines:
+                    clean_line = line[2:].strip()
+                    line_item_text_nodes = text_to_textnode(clean_line)
+                    list_item_html_nodes = []
+                    for text_node in line_item_text_nodes:
+                        list_item_html_nodes.append(text_node.text_node_to_html_node())
+
+                    list_item_parent_node = ParentNode(tag="li", children=list_item_html_nodes)
+                    un_list_parent_nodes.children.append(list_item_parent_node)
+
+                root_node.children.append(un_list_parent_nodes)
+
+            case BlockType.PARAGRAPH:
+                lines = block.splitlines()
+                cleaned = " ".join(lines)
+                text_nodes = text_to_textnode(cleaned)
+                html_leaf_nodes = []
+                for text_node in text_nodes:
+                    html_leaf_nodes.append(text_node.text_node_to_html_node())
+                paragraph_parent_node = ParentNode(tag="p", children=html_leaf_nodes)
+                root_node.children.append(paragraph_parent_node)
+
+    return root_node
+

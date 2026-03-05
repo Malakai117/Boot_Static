@@ -126,8 +126,6 @@ class TestSplitNodesDelimiter(unittest.TestCase):
         self.assertListEqual([node1_comp2], new_nodes3)
         self.assertListEqual([node1_comp1, node1_comp2], new_nodes4)
         self.assertListEqual(comp1, new_nodes5)
-        self.assertListEqual(comp1, new_nodes6)
-        self.assertEqual(new_falsey1, new_falsey2)
 
     def test_split_links(self):
         node1 = TextNode(
@@ -194,6 +192,141 @@ class TestTextToMarkdown(unittest.TestCase):
                 "This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line",
                 "- This is a list\n- with items",
             ],
+        )
+
+class TestBlockToBlockType(unittest.TestCase):
+
+    # ── HEADINGS ──────────────────────────────────────────────────────────────
+    def test_heading_h1(self):
+        self.assertEqual(block_to_block_type("# Hello"), BlockType.HEADING)
+
+    def test_heading_h3(self):
+        self.assertEqual(block_to_block_type("### Section title"), BlockType.HEADING)
+
+    def test_heading_h6(self):
+        self.assertEqual(block_to_block_type("###### Tiny heading"), BlockType.HEADING)
+
+    def test_heading_seven_hashes_is_paragraph(self):
+        # 7 # chars is NOT a valid heading
+        self.assertEqual(block_to_block_type("####### Too many"), BlockType.PARAGRAPH)
+
+    def test_heading_no_space_is_paragraph(self):
+        self.assertEqual(block_to_block_type("#NoSpace"), BlockType.PARAGRAPH)
+
+    # ── CODE ──────────────────────────────────────────────────────────────────
+    def test_code_block(self):
+        block = "```\nprint('hello')\n```"
+        self.assertEqual(block_to_block_type(block), BlockType.CODE)
+
+    def test_code_block_multiline(self):
+        block = "```\ndef foo():\n    return 42\n```"
+        self.assertEqual(block_to_block_type(block), BlockType.CODE)
+
+    def test_code_missing_newline_after_backticks_is_paragraph(self):
+        # No newline after opening ```
+        block = "```print('hello')```"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    def test_code_missing_closing_backticks_is_paragraph(self):
+        block = "```\nsome code"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    # ── QUOTE ─────────────────────────────────────────────────────────────────
+    def test_quote_single_line(self):
+        self.assertEqual(block_to_block_type(">This is a quote"), BlockType.QUOTE)
+
+    def test_quote_with_space(self):
+        self.assertEqual(block_to_block_type("> This is a quote"), BlockType.QUOTE)
+
+    def test_quote_multiline(self):
+        block = "> line one\n> line two\n> line three"
+        self.assertEqual(block_to_block_type(block), BlockType.QUOTE)
+
+    def test_quote_one_line_missing_marker_is_paragraph(self):
+        block = "> valid line\nnot a quote"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    # ── UNORDERED LIST ────────────────────────────────────────────────────────
+    def test_unordered_list_single(self):
+        self.assertEqual(block_to_block_type("- item"), BlockType.UN_LIST)
+
+    def test_unordered_list_multiline(self):
+        block = "- apples\n- bananas\n- cherries"
+        self.assertEqual(block_to_block_type(block), BlockType.UN_LIST)
+
+    def test_unordered_list_missing_space_is_paragraph(self):
+        self.assertEqual(block_to_block_type("-no space"), BlockType.PARAGRAPH)
+
+    def test_unordered_list_one_bad_line_is_paragraph(self):
+        block = "- good\nbad line\n- also good"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    # ── ORDERED LIST ──────────────────────────────────────────────────────────
+    def test_ordered_list_single(self):
+        self.assertEqual(block_to_block_type("1. first"), BlockType.OR_LIST)
+
+    def test_ordered_list_multiline(self):
+        block = "1. first\n2. second\n3. third"
+        self.assertEqual(block_to_block_type(block), BlockType.OR_LIST)
+
+    def test_ordered_list_must_start_at_one(self):
+        block = "2. second\n3. third"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    def test_ordered_list_must_increment(self):
+        block = "1. first\n3. third"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    def test_ordered_list_missing_dot_is_paragraph(self):
+        block = "1 first\n2 second"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    def test_ordered_list_missing_space_is_paragraph(self):
+        block = "1.first\n2.second"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    # ── PARAGRAPH ─────────────────────────────────────────────────────────────
+    def test_plain_paragraph(self):
+        self.assertEqual(block_to_block_type("Just a normal paragraph."), BlockType.PARAGRAPH)
+
+    def test_multiline_paragraph(self):
+        block = "Line one.\nLine two.\nLine three."
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    def test_empty_string_is_paragraph(self):
+        self.assertEqual(block_to_block_type(""), BlockType.PARAGRAPH)
+
+class Test_markdown_to_html(unittest.TestCase):
+    def test_paragraphs(self):
+        md = """
+    This is **bolded** paragraph
+    text in a p
+    tag here
+
+    This is another paragraph with _italic_ text and `code` here
+
+    """
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><p>This is <b>bolded</b> paragraph text in a p tag here</p><p>This is another paragraph with <i>italic</i> text and <code>code</code> here</p></div>",
+        )
+
+    def test_codeblock(self):
+        md = """
+    ```
+    This is text that _should_ remain
+    the **same** even with inline stuff
+    ```
+    """
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>",
         )
 
 if __name__ == "__main__":

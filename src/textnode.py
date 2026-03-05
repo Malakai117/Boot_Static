@@ -1,6 +1,15 @@
 from enum import Enum
 from htmlnode import HTMLNode, LeafNode, ParentNode
 
+
+class BlockType(Enum):
+    PARAGRAPH = "paragraph"
+    HEADING = "heading"
+    CODE = "code"
+    QUOTE = "quote"
+    UN_LIST = "unordered_list"
+    OR_LIST = "ordered_list"
+
 class TextType(Enum):
     TEXT = ""
     BOLD = "**"
@@ -8,6 +17,7 @@ class TextType(Enum):
     CODE = "`"
     LINK = "["
     IMAGE = "!"
+    ROOT = "div"
 
 
 class TextNode:
