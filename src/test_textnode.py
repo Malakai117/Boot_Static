@@ -329,5 +329,110 @@ class TestMarkdownToHtml(unittest.TestCase):
             "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>",
         )
 
+class TestExtractTitle(unittest.TestCase):
+    def test_extract_title(self):
+        string = "# This is a title"
+        res1 = extract_title(string)
+        self.assertRaises(ValueError, extract_title, "This is not a title")
+        self.assertRaises(ValueError, extract_title, "#This is not a title")
+        self.assertEqual(res1, "This is a title")
+
+    # ── BASIC HAPPY PATH ──────────────────────────────────────────────────────
+
+    def test_simple_h1(self):
+        self.assertEqual(extract_title("# Hello World"), "Hello World")
+
+    def test_returns_stripped_title(self):
+        # Extra whitespace around the title text should be stripped
+        self.assertEqual(extract_title("#   Lots of spaces   "), "Lots of spaces")
+
+    def test_title_with_inline_formatting(self):
+        # Inline Markdown in the title should be preserved as-is (not parsed)
+        result = extract_title("# My **Bold** Title")
+        self.assertEqual(result, "My **Bold** Title")
+
+    def test_title_with_numbers_and_punctuation(self):
+        self.assertEqual(extract_title("# Chapter 1: The Beginning!"), "Chapter 1: The Beginning!")
+
+    # ── H1 MUST BE USED, NOT H2-H6 ───────────────────────────────────────────
+
+    def test_h2_raises(self):
+        self.assertRaises(ValueError, extract_title, "## Not an h1")
+
+    def test_h3_raises(self):
+        self.assertRaises(ValueError, extract_title, "### Also not an h1")
+
+    def test_h6_raises(self):
+        self.assertRaises(ValueError, extract_title, "###### Still not an h1")
+
+    # ── MISSING / MALFORMED H1 ────────────────────────────────────────────────
+
+    def test_no_heading_raises(self):
+        self.assertRaises(ValueError, extract_title, "Just a plain paragraph.")
+
+    def test_hash_no_space_raises(self):
+        # "#Title" is not a valid heading per Markdown spec
+        self.assertRaises(ValueError, extract_title, "#NoSpace")
+
+    def test_empty_string_raises(self):
+        self.assertRaises(ValueError, extract_title, "")
+
+    def test_none_raises(self):
+        self.assertRaises(ValueError, extract_title, None)
+
+    def test_only_whitespace_raises(self):
+        self.assertRaises(ValueError, extract_title, "   \n\n   ")
+
+    # ── H1 BURIED IN DOCUMENT ────────────────────────────────────────────────
+
+    def test_h1_after_paragraph(self):
+        md = "Some intro text.\n\n# The Real Title\n\nMore content here."
+        self.assertEqual(extract_title(md), "The Real Title")
+
+    def test_h1_after_h2(self):
+        # A h2 appears first, but the h1 should still be found
+        md = "## Sub heading first\n\n# Actual Title"
+        self.assertEqual(extract_title(md), "Actual Title")
+
+    def test_h1_at_end_of_document(self):
+        md = "Paragraph one.\n\nParagraph two.\n\n# Title at the End"
+        self.assertEqual(extract_title(md), "Title at the End")
+
+    # ── MULTIPLE H1s ─────────────────────────────────────────────────────────
+
+    def test_returns_first_h1_when_multiple_present(self):
+        # Should return the FIRST h1 encountered
+        md = "# First Title\n\nSome content.\n\n# Second Title"
+        self.assertEqual(extract_title(md), "First Title")
+
+    # ── H1 VS LOOK-ALIKES ────────────────────────────────────────────────────
+
+    def test_h1_lookalike_in_code_block_ignored(self):
+        # A "# heading" inside a code block should NOT be treated as a title
+        md = "```\n# not a title\n```\n\n# Real Title"
+        self.assertEqual(extract_title(md), "Real Title")
+
+    def test_seven_hashes_not_heading(self):
+        # 7 hashes is not valid markdown heading; should raise
+        self.assertRaises(ValueError, extract_title, "####### Too many hashes")
+
+    def test_hash_in_middle_of_line_not_heading(self):
+        # A # mid-sentence is not a heading
+        self.assertRaises(ValueError, extract_title, "This has a # in the middle")
+
+    # ── WHITESPACE / FORMATTING EDGE CASES ───────────────────────────────────
+
+    def test_title_with_leading_trailing_newlines(self):
+        md = "\n\n# Title With Newlines\n\n"
+        self.assertEqual(extract_title(md), "Title With Newlines")
+
+    def test_title_only_content(self):
+        # Document is just the h1, nothing else
+        self.assertEqual(extract_title("# Solo Title"), "Solo Title")
+
+    def test_title_with_special_chars(self):
+        self.assertEqual(extract_title("# Hello: World & More (2024)"), "Hello: World & More (2024)")
+
+
 if __name__ == "__main__":
     unittest.main()

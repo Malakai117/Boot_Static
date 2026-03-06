@@ -301,10 +301,28 @@ def copy_static_to_public(src="./static", dst="./public"):
     copy_directory(src, dst)
     print("Done.")
 
-def extract_title(markdown):
-    lines = markdown.splitlines()
-    if lines[0].startswith("#"):
-        heading = lines[0][1:].strip()
-    else:
-        raise Exception("Heading not found.")
-    return heading
+def extract_title(markdown) -> str:
+    if not markdown:
+        raise ValueError("Could not extract h1 Heading from markdown_file")
+    blocks = markdown_to_blocks(markdown)
+    for block in blocks:
+        if block_to_block_type(block) == BlockType.HEADING:
+            if re.match(r"(?<!#)# ", block):
+                return block[1:].strip()
+    raise ValueError("Could not extract h1 Heading from markdown_file")
+
+def generate_page(src_path: str, template_path: str, dst_path: str) -> None:
+    print(f"Generating Page From: '{src_path}' -> '{dst_path}':\nUsing Template: '{template_path}'...")
+
+    with open(src_path, "r") as src:
+        src_file = src.read()
+    with open(template_path, "r") as template:
+        template_file = template.read()
+
+    html_root = markdown_to_html_node(src_file).to_html()
+    title = extract_title(src_file)
+    temp_edit1 = template_file.replace("{{ Title }}", title)
+    temp_edit2 = temp_edit1.replace("{{ Content }}", html_root)
+    with open(dst_path, "w") as dst:
+        dst.write(temp_edit2)
+

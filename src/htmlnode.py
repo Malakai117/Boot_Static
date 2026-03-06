@@ -12,8 +12,10 @@ class HTMLNode:
 
     def props_to_html(self):
         result = ""
-        for key, value in self.props:
-            result += result + f'{key}="{value}" '
+        if self.props is not None:
+            for key in self.props:
+                line = f'{key}="{self.props[key]}"'
+                result += " " + line
         return result
 
     def __eq__(self, other):
@@ -36,7 +38,7 @@ class LeafNode(HTMLNode):
             return f"<{self.tag}>{self.value}</{self.tag}>"
         else:
             for key in self.props:
-                return f'<{self.tag} {key}="{self.props[key]}">{self.value}</{self.tag}>'
+                return f'<{self.tag}{self.props_to_html()}>{self.value}</{self.tag}>'
         return Exception(f"unable to process .to_html() for LeafNode\n Tag: {self.tag},Value {self.value}, Props: {self.props}")
 
     def __repr__(self):
