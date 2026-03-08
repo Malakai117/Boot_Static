@@ -311,7 +311,7 @@ def extract_title(markdown) -> str:
                 return block[1:].strip()
     raise ValueError("Could not extract h1 Heading from markdown_file")
 
-def generate_page(src_path: str, template_path: str, dst_path: str) -> None:
+def generate_page(src_path: str, template_path: str, dst_path: str, base_path: str) -> None:
     print(f"Generating Page From: '{src_path}' -> '{dst_path}':\nUsing Template: '{template_path}'...")
 
     with open(src_path, "r") as src:
@@ -323,17 +323,23 @@ def generate_page(src_path: str, template_path: str, dst_path: str) -> None:
     title = extract_title(src_file)
     temp_edit1 = template_file.replace("{{ Title }}", title)
     temp_edit2 = temp_edit1.replace("{{ Content }}", html_root)
+    temp_edit3 = temp_edit2.replace('href="/', f'href="{base_path}')
+    temp_edit4 = temp_edit3.replace('src=/', f'src="{base_path}')
     with open(dst_path, "w") as dst:
-        dst.write(temp_edit2)
+        dst.write(temp_edit4)
 
-def generate_pages_recursive(src_path: str, template_path: str, dst_path: str) -> None:
+def generate_pages_recursive(src_path: str, template_path: str, dst_path: str, base_path: str) -> None:
     directories = os.listdir(src_path)
     for entry in directories:
         if os.path.isfile(os.path.join(src_path, entry)):
             if entry.endswith(".md"):
                 dst_entry = entry.replace(".md", ".html")
-                generate_page(os.path.join(src_path, entry), template_path, os.path.join(dst_path, dst_entry))
+                generate_page(src_path= os.path.join(src_path, entry),
+                              template_path= template_path,
+                              dst_path= os.path.join(dst_path, dst_entry),
+                              base_path= base_path
+                              )
         else:
             os.makedirs(os.path.join(dst_path, entry), exist_ok=True)
-            generate_pages_recursive(os.path.join(src_path, entry), template_path, os.path.join(dst_path, entry))
+            generate_pages_recursive(os.path.join(src_path, entry), template_path, os.path.join(dst_path, entry), base_path)
 
