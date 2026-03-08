@@ -259,7 +259,7 @@ def markdown_to_html_node(markdown_file: str) -> HTMLNode:
 
     return root_node
 
-def delete_directory(path):
+def delete_directory(path) -> None:
     """Recursively deletes all contents of a directory."""
     if not os.path.exists(path):
         return
@@ -325,4 +325,15 @@ def generate_page(src_path: str, template_path: str, dst_path: str) -> None:
     temp_edit2 = temp_edit1.replace("{{ Content }}", html_root)
     with open(dst_path, "w") as dst:
         dst.write(temp_edit2)
+
+def generate_pages_recursive(src_path: str, template_path: str, dst_path: str) -> None:
+    directories = os.listdir(src_path)
+    for entry in directories:
+        if os.path.isfile(os.path.join(src_path, entry)):
+            if entry.endswith(".md"):
+                dst_entry = entry.replace(".md", ".html")
+                generate_page(os.path.join(src_path, entry), template_path, os.path.join(dst_path, dst_entry))
+        else:
+            os.makedirs(os.path.join(dst_path, entry), exist_ok=True)
+            generate_pages_recursive(os.path.join(src_path, entry), template_path, os.path.join(dst_path, entry))
 
